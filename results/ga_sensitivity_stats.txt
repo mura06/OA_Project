@@ -1,0 +1,9 @@
+GA OPERATOR COMPARISON RESULTS
+=============================
+Config A (Tournament, BLX-0.5, Gaussian, Uniform Init):
+  Final Train Fitness (F1-macro): 0.860839
+  Test F1-macro Score:            0.663793
+
+Config B (Roulette, Arithmetic, Uniform Mutation, Normal Init):
+  Final Train Fitness (F1-macro): 0.823224
+  Test F1-macro Score:            0.686887
