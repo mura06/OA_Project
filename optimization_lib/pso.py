@@ -1,6 +1,5 @@
 import numpy as np
-from optimization_lib.network import fitness_function
-from optimization_lib.ga import init_uniform, init_normal
+from optimization_lib.network import fitness_function, generate_solution
 
 class ParticleSwarmOptimization:
     def __init__(self, model, X, y, num_particles=50, generations=100,
@@ -39,10 +38,7 @@ class ParticleSwarmOptimization:
         
         for _ in range(self.num_particles):
             # Position initialization
-            if self.init_method == "uniform":
-                pos = init_uniform(self.model, self.rng)
-            else:
-                pos = init_normal(self.model, self.rng)
+            pos = generate_solution(self.model, self.init_method, self.rng)
             
             # Velocity initialization (small random values)
             vel = self.rng.uniform(-self.v_max * 0.5, self.v_max * 0.5, size=self.num_params)

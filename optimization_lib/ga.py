@@ -1,29 +1,5 @@
 import numpy as np
-from optimization_lib.network import fitness_function
-
-def init_uniform(model, rng):
-    """
-    Generates a random weight vector using Xavier/Glorot uniform initialization for each layer.
-    """
-    parts = []
-    for i in range(len(model.coefs_)):
-        n_in, n_out = model.coefs_[i].shape
-        limit = np.sqrt(6.0 / (n_in + n_out))
-        parts.append(rng.uniform(-limit, limit, size=n_in * n_out))
-        parts.append(rng.uniform(-limit, limit, size=n_out))
-    return np.concatenate(parts)
-
-def init_normal(model, rng):
-    """
-    Generates a random weight vector using He normal initialization for each layer.
-    """
-    parts = []
-    for i in range(len(model.coefs_)):
-        n_in, n_out = model.coefs_[i].shape
-        std = np.sqrt(2.0 / n_in)
-        parts.append(rng.normal(0, std, size=n_in * n_out))
-        parts.append(rng.normal(0, std, size=n_out))
-    return np.concatenate(parts)
+from optimization_lib.network import fitness_function, generate_solution
 
 def tournament_selection(population, fitnesses, tournament_size, rng):
     """
@@ -120,10 +96,7 @@ class GeneticAlgorithm:
         # 1. Initialize population
         population = []
         for _ in range(self.pop_size):
-            if self.init_method == "uniform":
-                ind = init_uniform(self.model, self.rng)
-            else:
-                ind = init_normal(self.model, self.rng)
+            ind = generate_solution(self.model, self.init_method, self.rng)
             population.append(ind)
         population = np.array(population)
 
