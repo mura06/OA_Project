@@ -4,6 +4,15 @@ from optimization_lib.network import fitness_function, generate_solution
 def tournament_selection(population, fitnesses, tournament_size, rng):
     """
     Selects the best of K randomly selected individuals.
+    
+    Parameters:
+        population: The array of candidate solutions.
+        fitnesses: The fitness scores of the population.
+        tournament_size: The number of individuals to sample.
+        rng: The numpy random generator.
+    
+    Returns:
+        np.ndarray: The selected individual (copied).
     """
     selected_idx = rng.choice(len(population), size=tournament_size, replace=False)
     best_idx = selected_idx[np.argmax(fitnesses[selected_idx])]
@@ -11,7 +20,15 @@ def tournament_selection(population, fitnesses, tournament_size, rng):
 
 def roulette_wheel_selection(population, fitnesses, rng):
     """
-    Rank-based roulette wheel selection to handle negative fitness values and maintain stability.
+    Rank-based roulette wheel selection for maintaining stability.
+    
+    Parameters:
+        population: The array of candidate solutions.
+        fitnesses: The fitness scores of the population.
+        rng: The numpy random generator.
+    
+    Returns:
+        np.ndarray: The selected individual (copied).
     """
     ranks = np.argsort(np.argsort(fitnesses))  # ranks from 0 (worst) to N-1 (best)
     probs = (ranks + 1) / np.sum(ranks + 1)
@@ -21,6 +38,14 @@ def roulette_wheel_selection(population, fitnesses, rng):
 def arithmetic_crossover(parent1, parent2, rng):
     """
     Blends parents linearly: c = beta * p1 + (1 - beta) * p2.
+    
+    Parameters:
+        parent1: The first parent solution vector.
+        parent2: The second parent solution vector.
+        rng: The numpy random generator.
+    
+    Returns:
+        tuple: Two new child solution vectors.
     """
     beta = rng.uniform(0, 1)
     child1 = beta * parent1 + (1 - beta) * parent2
@@ -30,6 +55,15 @@ def arithmetic_crossover(parent1, parent2, rng):
 def blx_alpha_crossover(parent1, parent2, alpha, rng):
     """
     Blend Crossover (BLX-alpha) creates offspring in an expanded range between parents.
+    
+    Parameters:
+        parent1: The first parent solution vector.
+        parent2: The second parent solution vector.
+        alpha: The expansion factor.
+        rng: The numpy random generator.
+    
+    Returns:
+        tuple: Two new child solution vectors.
     """
     d = np.abs(parent1 - parent2)
     low = np.minimum(parent1, parent2) - alpha * d
@@ -41,6 +75,15 @@ def blx_alpha_crossover(parent1, parent2, alpha, rng):
 def gaussian_mutation(individual, mutation_rate, scale, rng):
     """
     Adds Gaussian noise N(0, scale^2) to mutated genes.
+    
+    Parameters:
+        individual: The solution vector to mutate.
+        mutation_rate: The probability of mutating each gene.
+        scale: The standard deviation of the Gaussian noise.
+        rng: The numpy random generator.
+    
+    Returns:
+        np.ndarray: The mutated solution vector.
     """
     mutated = individual.copy()
     mask = rng.uniform(0, 1, size=len(individual)) < mutation_rate
@@ -50,6 +93,15 @@ def gaussian_mutation(individual, mutation_rate, scale, rng):
 def uniform_mutation(individual, mutation_rate, scale, rng):
     """
     Adds uniform noise in range [-scale, scale] to mutated genes.
+    
+    Parameters:
+        individual: The solution vector to mutate.
+        mutation_rate: The probability of mutating each gene.
+        scale: The range boundary for uniform noise.
+        rng: The numpy random generator.
+    
+    Returns:
+        np.ndarray: The mutated solution vector.
     """
     mutated = individual.copy()
     mask = rng.uniform(0, 1, size=len(individual)) < mutation_rate
@@ -83,9 +135,7 @@ class GeneticAlgorithm:
         self.metric = metric
         self.rng = np.random.default_rng(random_state)
         
-        # Determine number of network parameters
-        self.num_params = len(model.coefs_[0].flatten()) + len(model.intercepts_[0])
-        # Find exact size
+        # Determine exact number of network parameters
         dummy_weights = []
         for coef, intercept in zip(model.coefs_, model.intercepts_):
             dummy_weights.append(coef.flatten())
@@ -93,7 +143,7 @@ class GeneticAlgorithm:
         self.num_params = len(np.concatenate(dummy_weights))
 
     def solve(self):
-        # 1. Initialize population
+        # Initialize population
         population = []
         for _ in range(self.pop_size):
             ind = generate_solution(self.model, self.init_method, self.rng)
@@ -106,7 +156,7 @@ class GeneticAlgorithm:
         best_individual = None
         best_fitness = -np.inf
 
-        # 2. Optimization loop
+        # Optimization loop
         for gen in range(self.generations):
             # Evaluate fitness of all individuals
             fitnesses = np.array([
@@ -152,20 +202,23 @@ class GeneticAlgorithm:
                 else:
                     child1, child2 = parent1.copy(), parent2.copy()
 
-                # Mutation
+                # Mutation for child 1
                 if self.rng.uniform(0, 1) < self.mutation_prob:
                     if self.mutation_method == "gaussian":
                         child1 = gaussian_mutation(child1, self.mutation_gene_rate, self.mutation_scale, self.rng)
                     else:
                         child1 = uniform_mutation(child1, self.mutation_gene_rate, self.mutation_scale, self.rng)
                 
+                # Mutation for child 2
                 if self.rng.uniform(0, 1) < self.mutation_prob:
                     if self.mutation_method == "gaussian":
                         child2 = gaussian_mutation(child2, self.mutation_gene_rate, self.mutation_scale, self.rng)
                     else:
                         child2 = uniform_mutation(child2, self.mutation_gene_rate, self.mutation_scale, self.rng)
 
-                next_generation.append(child1)
+                # Append children to next generation if there is space
+                if len(next_generation) < self.pop_size:
+                    next_generation.append(child1)
                 if len(next_generation) < self.pop_size:
                     next_generation.append(child2)
 
