@@ -14,8 +14,11 @@ def tournament_selection(population, fitnesses, tournament_size, rng):
     Returns:
         np.ndarray: The selected individual (copied).
     """
+    # Randomly select K individuals for the tournament
     selected_idx = rng.choice(len(population), size=tournament_size, replace=False)
+    # Find the index of the individual with the highest fitness among the selected
     best_idx = selected_idx[np.argmax(fitnesses[selected_idx])]
+    # Return a copy of the winning individual
     return population[best_idx].copy()
 
 def roulette_wheel_selection(population, fitnesses, rng):
@@ -30,9 +33,13 @@ def roulette_wheel_selection(population, fitnesses, rng):
     Returns:
         np.ndarray: The selected individual (copied).
     """
-    ranks = np.argsort(np.argsort(fitnesses))  # ranks from 0 (worst) to N-1 (best)
+    # Calculate ranks from 0 (worst) to N-1 (best)
+    ranks = np.argsort(np.argsort(fitnesses))
+    # Calculate selection probabilities proportional to rank
     probs = (ranks + 1) / np.sum(ranks + 1)
+    # Select one individual based on the calculated probabilities
     idx = rng.choice(len(population), p=probs)
+    # Return a copy of the selected individual
     return population[idx].copy()
 
 def arithmetic_crossover(parent1, parent2, rng):
@@ -47,9 +54,13 @@ def arithmetic_crossover(parent1, parent2, rng):
     Returns:
         tuple: Two new child solution vectors.
     """
+    # Generate a random blending factor beta between 0 and 1
     beta = rng.uniform(0, 1)
+    # Create the first child by blending parent1 and parent2
     child1 = beta * parent1 + (1 - beta) * parent2
+    # Create the second child with the inverse blending ratio
     child2 = (1 - beta) * parent1 + beta * parent2
+    # Return the two new children
     return child1, child2
 
 def blx_alpha_crossover(parent1, parent2, alpha, rng):
@@ -65,11 +76,17 @@ def blx_alpha_crossover(parent1, parent2, alpha, rng):
     Returns:
         tuple: Two new child solution vectors.
     """
+    # Calculate the absolute difference between the two parents
     d = np.abs(parent1 - parent2)
+    # Define the lower bound for the extended search space
     low = np.minimum(parent1, parent2) - alpha * d
+    # Define the upper bound for the extended search space
     high = np.maximum(parent1, parent2) + alpha * d
+    # Generate the first child randomly within the new bounds
     child1 = rng.uniform(low, high)
+    # Generate the second child randomly within the new bounds
     child2 = rng.uniform(low, high)
+    # Return the two new children
     return child1, child2
 
 def gaussian_mutation(individual, mutation_rate, scale, rng):
@@ -85,9 +102,13 @@ def gaussian_mutation(individual, mutation_rate, scale, rng):
     Returns:
         np.ndarray: The mutated solution vector.
     """
+    # Create a copy of the individual to mutate
     mutated = individual.copy()
+    # Generate a boolean mask to determine which genes will mutate
     mask = rng.uniform(0, 1, size=len(individual)) < mutation_rate
+    # Add Gaussian noise to the selected genes
     mutated[mask] += rng.normal(0, scale, size=np.sum(mask))
+    # Return the mutated individual
     return mutated
 
 def uniform_mutation(individual, mutation_rate, scale, rng):
@@ -103,9 +124,13 @@ def uniform_mutation(individual, mutation_rate, scale, rng):
     Returns:
         np.ndarray: The mutated solution vector.
     """
+    # Create a copy of the individual to mutate
     mutated = individual.copy()
+    # Generate a boolean mask to determine which genes will mutate
     mask = rng.uniform(0, 1, size=len(individual)) < mutation_rate
+    # Add uniform noise to the selected genes
     mutated[mask] += rng.uniform(-scale, scale, size=np.sum(mask))
+    # Return the mutated individual
     return mutated
 
 

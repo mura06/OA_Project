@@ -2,10 +2,10 @@ GA VS PSO STATISTICAL COMPARISON
 ===============================
 
 Genetic Algorithm Summary:
-  Train F1-macro: 0.8956 ± 0.0266
-  Test F1-macro:  0.7559 ± 0.0572
-  Test Accuracy:  0.8308 ± 0.0248
-  Test Bal. Acc:  0.7486 ± 0.0750
+  Train F1-macro: 0.8460 ± 0.0365
+  Test F1-macro:  0.7244 ± 0.1018
+  Test Accuracy:  0.8231 ± 0.0547
+  Test Bal. Acc:  0.7172 ± 0.1008
 
 Particle Swarm Optimization Summary:
   Train F1-macro: 0.9272 ± 0.0364
@@ -14,7 +14,7 @@ Particle Swarm Optimization Summary:
   Test Bal. Acc:  0.7671 ± 0.1025
 
 Hypothesis Testing (F1-macro):
-  Paired t-test:   t-stat=-0.8426, p-value=0.421261
-  Wilcoxon test:   stat=17.0000, p-value=0.570312
+  Paired t-test:   t-stat=-1.3499, p-value=0.210024
+  Wilcoxon test:   stat=17.0000, p-value=0.322266
 
 Conclusion: There is no statistically significant difference between GA and PSO performance (p >= 0.05).

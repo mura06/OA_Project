@@ -30,7 +30,7 @@ class ParticleSwarmOptimization:
         self.num_params = len(np.concatenate(dummy_weights))
 
     def solve(self):
-        # 1. Initialize particle positions and velocities
+        # Initialize particle positions and velocities
         positions = []
         velocities = []
         pbest_positions = []
@@ -64,7 +64,7 @@ class ParticleSwarmOptimization:
         gbest_fitness_history = []
         mean_fitness_history = []
 
-        # 2. Optimization loop
+        # Optimization loop
         for gen in range(self.generations):
             # Update inertia weight w (linear decay)
             w = self.w_start - (self.w_start - self.w_end) * (gen / self.generations)

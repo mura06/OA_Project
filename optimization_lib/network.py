@@ -42,10 +42,15 @@ def get_weights(model):
     Returns:
         np.ndarray: The flattened weight vector.
     """
+    # Create empty list to store flattened coefficients and intercepts
     flat_params = []
+
+    # Loop through coefficients and intercepts and flatten them
     for coef, intercept in zip(model.coefs_, model.intercepts_):
         flat_params.append(coef.flatten())
         flat_params.append(intercept.flatten())
+
+    # Concatenate flattened coefficients and intercepts
     return np.concatenate(flat_params)
 
 def set_weights(model, flat_vector):
@@ -59,10 +64,12 @@ def set_weights(model, flat_vector):
     Returns:
         None
     """
+    # Reconstruct coefficients and intercepts from flattened vector
     coefs = []
     intercepts = []
     current_idx = 0
     
+    # Loop through coefficients and intercepts and reshape them
     for i in range(len(model.coefs_)):
         coef_shape = model.coefs_[i].shape
         intercept_shape = model.intercepts_[i].shape
@@ -95,12 +102,16 @@ def generate_solution(model, init_method="uniform", random_state=42):
     Returns:
         np.ndarray: The flattened weight vector.
     """
+    # If random_state is not a Generator, create one
     if isinstance(random_state, np.random.Generator):
         rng = random_state
     else:
         rng = np.random.default_rng(random_state)
-        
+
+    # Create empty list to store newly generated weights
     parts = []
+    
+    # Loop through layer sizes and generate random weights for each layer
     for i in range(len(model.coefs_)):
         n_in, n_out = model.coefs_[i].shape
         if init_method == "uniform":
@@ -111,6 +122,8 @@ def generate_solution(model, init_method="uniform", random_state=42):
             std = np.sqrt(2.0 / n_in)
             parts.append(rng.normal(0, std, size=n_in * n_out))
             parts.append(rng.normal(0, std, size=n_out))
+    
+    # Return concatenated newly generated weight vector
     return np.concatenate(parts)
 
 def fitness_function(weights, model, X, y, metric="f1_macro"):
@@ -131,6 +144,7 @@ def fitness_function(weights, model, X, y, metric="f1_macro"):
     set_weights(model, weights)
     predictions = model.predict(X)
     
+    # Return fitness value according to the chosen metric
     if metric == "f1_macro":
         return f1_score(y, predictions, average="macro")
     elif metric == "f1_binary":
