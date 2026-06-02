@@ -1,6 +1,7 @@
 import numpy as np
 from optimization_lib.network import fitness_function, generate_solution
 
+
 def tournament_selection(population, fitnesses, tournament_size, rng):
     """
     Selects the best of K randomly selected individuals.
