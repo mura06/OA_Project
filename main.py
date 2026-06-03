@@ -33,57 +33,93 @@ def run_ga_operator_comparison(X, y):
     Compares two GA configurations to evaluate the influence of operators:
     Config A (Base/Heuristic GA): Xavier/Uniform Init, BLX-0.5 Crossover, Gaussian Mutation, Tournament Selection
     Config B (Alternative GA): He/Normal Init, Arithmetic Crossover, Uniform Mutation, Roulette Wheel Selection
+    Runs over 5 different random seeds/splits to ensure statistical validity of the operator selection.
     
     Parameters:
         X: The input feature matrix.
         y: The target labels.
         
     Returns:
-        GeneticAlgorithm: The best configured GA instance.
+        dict: The hyperparameters of the best GA configuration.
     """
+    num_runs = 5
+    results_a = []
+    results_b = []
+    hist_a = []
+    hist_b = []
     
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, stratify=y, random_state=42
-    )
+    for i in range(num_runs):
+        seed = 42 + i
+        print(f"Operator Comparison Run {i+1}/{num_runs} (Seed: {seed})...")
+        
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.20, stratify=y, random_state=seed
+        )
+        
+        # Setup distinct models for both configurations to avoid shared state mutations
+        model_a = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=seed)
+        model_b = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=seed)
+        
+        # Config A
+        ga_a = GeneticAlgorithm(
+            model=model_a, X=X_train, y=y_train, pop_size=50, generations=50,
+            crossover_prob=0.8, mutation_prob=0.25, mutation_gene_rate=0.15,
+            init_method="uniform", selection_method="tournament",
+            crossover_method="blx_alpha", mutation_method="gaussian",
+            tournament_size=3, blx_alpha=0.5, mutation_scale=0.1,
+            metric="f1_macro", random_state=seed
+        )
+        
+        # Config B
+        ga_b = GeneticAlgorithm(
+            model=model_b, X=X_train, y=y_train, pop_size=50, generations=50,
+            crossover_prob=0.8, mutation_prob=0.25, mutation_gene_rate=0.15,
+            init_method="normal", selection_method="roulette",
+            crossover_method="arithmetic", mutation_method="uniform",
+            mutation_scale=0.1, metric="f1_macro", random_state=seed
+        )
+        
+        # Run GA Config A
+        best_w_a, best_fit_a, fit_hist_a, _ = ga_a.solve()
+        test_f1_a = fitness_function(best_w_a, model_a, X_test, y_test, "f1_macro")
+        results_a.append({"train_f1": best_fit_a, "test_f1": test_f1_a})
+        hist_a.append(fit_hist_a)
+        
+        # Run GA Config B
+        best_w_b, best_fit_b, fit_hist_b, _ = ga_b.solve()
+        test_f1_b = fitness_function(best_w_b, model_b, X_test, y_test, "f1_macro")
+        results_b.append({"train_f1": best_fit_b, "test_f1": test_f1_b})
+        hist_b.append(fit_hist_b)
+        
+    df_a = pd.DataFrame(results_a)
+    df_b = pd.DataFrame(results_b)
     
-    # Setup the model
-    model = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=42)
+    mean_train_a, std_train_a = df_a["train_f1"].mean(), df_a["train_f1"].std()
+    mean_test_a, std_test_a = df_a["test_f1"].mean(), df_a["test_f1"].std()
     
-    # Config A
-    ga_a = GeneticAlgorithm(
-        model=model, X=X_train, y=y_train, pop_size=50, generations=50,
-        crossover_prob=0.8, mutation_prob=0.25, mutation_gene_rate=0.15,
-        init_method="uniform", selection_method="tournament",
-        crossover_method="blx_alpha", mutation_method="gaussian",
-        tournament_size=3, blx_alpha=0.5, mutation_scale=0.1,
-        metric="f1_macro", random_state=42
-    )
+    mean_train_b, std_train_b = df_b["train_f1"].mean(), df_b["train_f1"].std()
+    mean_test_b, std_test_b = df_b["test_f1"].mean(), df_b["test_f1"].std()
     
-    # Config B
-    ga_b = GeneticAlgorithm(
-        model=model, X=X_train, y=y_train, pop_size=50, generations=50,
-        crossover_prob=0.8, mutation_prob=0.25, mutation_gene_rate=0.15,
-        init_method="normal", selection_method="roulette",
-        crossover_method="arithmetic", mutation_method="uniform",
-        mutation_scale=0.1, metric="f1_macro", random_state=42
-    )
-    
-    # Run GA Config A
-    best_w_a, best_fit_a, fit_hist_a, mean_hist_a = ga_a.solve()
-    test_f1_a = fitness_function(best_w_a, model, X_test, y_test, "f1_macro")
-    
-    # Run GA Config B
-    best_w_b, best_fit_b, fit_hist_b, mean_hist_b = ga_b.solve()
-    test_f1_b = fitness_function(best_w_b, model, X_test, y_test, "f1_macro")
-    
-    print(f"Config A (BLX, Gaussian, Tourn) - Train Fitness (F1-macro): {best_fit_a:.4f}, Test F1-macro: {test_f1_a:.4f}")
-    print(f"Config B (Arith, Uniform, Roule) - Train Fitness (F1-macro): {best_fit_b:.4f}, Test F1-macro: {test_f1_b:.4f}")
+    print(f"Config A (BLX, Gaussian, Tourn) - Mean Train: {mean_train_a:.4f}, Mean Test F1: {mean_test_a:.4f}")
+    print(f"Config B (Arith, Uniform, Roule) - Mean Train: {mean_train_b:.4f}, Mean Test F1: {mean_test_b:.4f}")
     
     # Plot sensitivity analysis convergence and saving them to use on the report
     plt.figure(figsize=(10, 6))
-    plt.plot(fit_hist_a, label="Config A (BLX Crossover, Gaussian Mutation, Tournament Selection)", color="#1e3a8a", linewidth=2)
-    plt.plot(fit_hist_b, label="Config B (Arithmetic Crossover, Uniform Mutation, Roulette Wheel Selection)", color="#b91c1c", linewidth=2)
+    
+    mean_curve_a = np.mean(hist_a, axis=0)
+    std_curve_a = np.std(hist_a, axis=0)
+    mean_curve_b = np.mean(hist_b, axis=0)
+    std_curve_b = np.std(hist_b, axis=0)
+    
+    epochs = range(len(mean_curve_a))
+    
+    plt.plot(epochs, mean_curve_a, label="Config A (BLX Crossover, Gaussian Mutation, Tournament Selection)", color="#1e3a8a", linewidth=2)
+    plt.fill_between(epochs, mean_curve_a - std_curve_a, mean_curve_a + std_curve_a, color="#1e3a8a", alpha=0.15)
+    
+    plt.plot(epochs, mean_curve_b, label="Config B (Arithmetic Crossover, Uniform Mutation, Roulette Wheel Selection)", color="#b91c1c", linewidth=2)
+    plt.fill_between(epochs, mean_curve_b - std_curve_b, mean_curve_b + std_curve_b, color="#b91c1c", alpha=0.15)
+    
     plt.title("GA Operator Sensitivity Analysis (F1-macro vs Generations)", fontsize=14, fontweight="bold", pad=15)
     plt.xlabel("Generation", fontsize=12)
     plt.ylabel("Training Fitness (F1-macro)", fontsize=12)
@@ -93,27 +129,27 @@ def run_ga_operator_comparison(X, y):
     plt.savefig("results/ga_sensitivity.png", dpi=300)
     plt.close()
     
-    # Save statistics to so we have them for the report
+    # Save statistics so we have them for the report
     with open("results/ga_sensitivity_stats.txt", "w", encoding="utf-8") as f:
-        f.write("GA OPERATOR COMPARISON RESULTS\n")
-        f.write("=============================\n")
-        f.write(f"Config A (Tournament, BLX-0.5, Gaussian, Uniform Init):\n")
-        f.write(f"  Final Train Fitness (F1-macro): {best_fit_a:.6f}\n")
-        f.write(f"  Test F1-macro Score:            {test_f1_a:.6f}\n\n")
-        f.write(f"Config B (Roulette, Arithmetic, Uniform Mutation, Normal Init):\n")
-        f.write(f"  Final Train Fitness (F1-macro): {best_fit_b:.6f}\n")
-        f.write(f"  Test F1-macro Score:            {test_f1_b:.6f}\n")
+        f.write("GA OPERATOR COMPARISON RESULTS (AVERAGED OVER 5 RUNS)\n")
+        f.write("=====================================================\n\n")
+        f.write("Config A (Tournament, BLX-0.5, Gaussian, Uniform Init):\n")
+        f.write(f"  Train Fitness (F1-macro): {mean_train_a:.6f} ± {std_train_a:.6f}\n")
+        f.write(f"  Test F1-macro Score:      {mean_test_a:.6f} ± {std_test_a:.6f}\n\n")
+        f.write("Config B (Roulette, Arithmetic, Uniform Mutation, Normal Init):\n")
+        f.write(f"  Train Fitness (F1-macro): {mean_train_b:.6f} ± {std_train_b:.6f}\n")
+        f.write(f"  Test F1-macro Score:      {mean_test_b:.6f} ± {std_test_b:.6f}\n")
         
     # Return the hyperparameters of the GA configuration that performed best on the test set
-    if test_f1_a >= test_f1_b:
-        print(f"\nConfig A won with a Test F1-score of {test_f1_a:.4f} vs {test_f1_b:.4f}.")
+    if mean_test_a >= mean_test_b:
+        print(f"\nConfig A won with an average Test F1-score of {mean_test_a:.4f} vs {mean_test_b:.4f}.")
         return {
             "init_method": "uniform", "selection_method": "tournament",
             "crossover_method": "blx_alpha", "mutation_method": "gaussian",
             "tournament_size": 3, "blx_alpha": 0.5, "mutation_scale": 0.1
         }
     else:
-        print(f"\nConfig B won with a Test F1-score of {test_f1_b:.4f} vs {test_f1_a:.4f} (Config A overfit!).")
+        print(f"\nConfig B won with an average Test F1-score of {mean_test_b:.4f} vs {mean_test_a:.4f}.")
         return {
             "init_method": "normal", "selection_method": "roulette",
             "crossover_method": "arithmetic", "mutation_method": "uniform",
@@ -154,11 +190,13 @@ def run_main_comparison(X, y, best_ga_config):
             X, y, test_size=0.20, stratify=y, random_state=seed
         )
         
-        model = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=seed)
+        # Setup distinct models for GA and PSO to prevent shared state mutations
+        model_ga = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=seed)
+        model_pso = create_network(input_dim=X.shape[1], hidden_layer_sizes=(10, 5), random_state=seed)
         
         # Run GA
         ga = GeneticAlgorithm(
-            model=model, X=X_train, y=y_train, pop_size=60, generations=80,
+            model=model_ga, X=X_train, y=y_train, pop_size=60, generations=80,
             crossover_prob=0.8, mutation_prob=0.25, mutation_gene_rate=0.15,
             metric="f1_macro", random_state=seed,
             **best_ga_config
@@ -166,9 +204,9 @@ def run_main_comparison(X, y, best_ga_config):
         best_w_ga, best_fit_ga, best_fit_hist_ga, _ = ga.solve()
         
         # Evaluate GA
-        test_f1_ga = fitness_function(best_w_ga, model, X_test, y_test, "f1_macro")
-        test_acc_ga = fitness_function(best_w_ga, model, X_test, y_test, "accuracy")
-        test_bacc_ga = fitness_function(best_w_ga, model, X_test, y_test, "balanced_accuracy")
+        test_f1_ga = fitness_function(best_w_ga, model_ga, X_test, y_test, "f1_macro")
+        test_acc_ga = fitness_function(best_w_ga, model_ga, X_test, y_test, "accuracy")
+        test_bacc_ga = fitness_function(best_w_ga, model_ga, X_test, y_test, "balanced_accuracy")
         
         ga_results.append({
             "run": i+1, "train_f1": best_fit_ga, "test_f1": test_f1_ga, 
@@ -184,7 +222,7 @@ def run_main_comparison(X, y, best_ga_config):
             
         # Run PSO
         pso = ParticleSwarmOptimization(
-            model=model, X=X_train, y=y_train, num_particles=60, generations=80,
+            model=model_pso, X=X_train, y=y_train, num_particles=60, generations=80,
             w_start=0.9, w_end=0.4, c1=1.6, c2=1.6, v_max=0.5,
             pos_min=-2.0, pos_max=2.0, init_method="uniform",
             metric="f1_macro", random_state=seed
@@ -192,9 +230,9 @@ def run_main_comparison(X, y, best_ga_config):
         best_w_pso, best_fit_pso, best_fit_hist_pso, _ = pso.solve()
         
         # Evaluate PSO
-        test_f1_pso = fitness_function(best_w_pso, model, X_test, y_test, "f1_macro")
-        test_acc_pso = fitness_function(best_w_pso, model, X_test, y_test, "accuracy")
-        test_bacc_pso = fitness_function(best_w_pso, model, X_test, y_test, "balanced_accuracy")
+        test_f1_pso = fitness_function(best_w_pso, model_pso, X_test, y_test, "f1_macro")
+        test_acc_pso = fitness_function(best_w_pso, model_pso, X_test, y_test, "accuracy")
+        test_bacc_pso = fitness_function(best_w_pso, model_pso, X_test, y_test, "balanced_accuracy")
         
         pso_results.append({
             "run": i+1, "train_f1": best_fit_pso, "test_f1": test_f1_pso, 
@@ -245,6 +283,24 @@ def run_main_comparison(X, y, best_ga_config):
             f.write(f"Conclusion: There is a statistically significant difference (p < 0.05). {better} performs better.\n")
         else:
             f.write("Conclusion: There is no statistically significant difference between GA and PSO performance (p >= 0.05).\n")
+
+    # Print final summary statistics to console
+    print("\n" + "=" * 45)
+    print("      GA VS PSO STATISTICAL COMPARISON SUMMARY")
+    print("=" * 45)
+    print("Genetic Algorithm (GA):")
+    print(f"  Test F1-macro:  {df_ga['test_f1'].mean():.4f} ± {df_ga['test_f1'].std():.4f}")
+    print(f"  Test Accuracy:  {df_ga['test_acc'].mean():.4f} ± {df_ga['test_acc'].std():.4f}")
+    print("Particle Swarm Optimization (PSO):")
+    print(f"  Test F1-macro:  {df_pso['test_f1'].mean():.4f} ± {df_pso['test_f1'].std():.4f}")
+    print(f"  Test Accuracy:  {df_pso['test_acc'].mean():.4f} ± {df_pso['test_acc'].std():.4f}")
+    print("-" * 45)
+    if wilc_pval < 0.05:
+        better = "PSO" if df_pso['test_f1'].mean() > df_ga['test_f1'].mean() else "GA"
+        print(f"Conclusion: Significant difference (p={wilc_pval:.5f}). {better} performs better.")
+    else:
+        print(f"Conclusion: No significant difference (p={wilc_pval:.5f}).")
+    print("=" * 45)
 
     print("\nStatistical results saved to results/statistical_results.txt")
 
